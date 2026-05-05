@@ -66,4 +66,7 @@ pub mod creator;
 pub mod modals;
 pub mod workspace;
 
-pub mod components {}
+pub mod components {
+    pub mod output;
+    pub mod settings;
+}
