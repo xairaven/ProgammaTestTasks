@@ -63,6 +63,7 @@ pub enum GraphicsBackendError {
 }
 
 pub mod creator;
+pub mod errors;
 pub mod modals;
 pub mod workspace;
 

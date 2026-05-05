@@ -14,6 +14,7 @@ pub struct AppCreator {
 
 impl AppCreator {
     pub fn new(cc: &eframe::CreationContext<'_>, config: Config) -> Self {
+        Self::set_fonts(cc);
         Self::set_theme(cc, &config);
 
         let context = Context::new(config);
@@ -28,6 +29,12 @@ impl AppCreator {
 
     fn set_theme(cc: &eframe::CreationContext<'_>, config: &Config) {
         cc.egui_ctx.set_theme(config.theme);
+    }
+
+    fn set_fonts(cc: &eframe::CreationContext<'_>) {
+        let mut fonts = egui::FontDefinitions::default();
+        egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+        cc.egui_ctx.set_fonts(fonts);
     }
 }
 
