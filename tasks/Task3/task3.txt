@@ -1,0 +1,35 @@
+Ти отримав http.log — журнал HTTP-з'єднань, згенерований реальною мережею.Завдання: написати CLI-утиліту, яка парсить цей формат, рахує статистику і виявляє підозрілу мережеву активність,якщо вона є. Також можна ввести додаткові опції парсингу, на власний розсуд.
+
+
+Додатково:
+
+Опис полів логів
+
+Data Type	Count	Unique Values	Missing Values
+ts	float64	2048442	668595	0
+uid	object	2048442	479204	0
+id.orig_h	object	2048442	71	0
+id.orig_p	int64	2048442	37686	0
+id.resp_h	object	2048442	88	0
+id.resp_p	int64	2048442	8	0
+trans_depth	int64	2048442	1207	0
+method	object	2047566	143	876
+host	object	2042003	315	6439
+uri	object	2047566	1591739	876
+referrer	object	382520	2485	1665922
+user_agent	object	1977097	6560	71345
+request_ body_len	int64	2048442	707	0
+response_ body_len	int64	2048442	3839	0
+status_code	float64	2011424	24	37018
+status_msg	object	2011424	38	37018
+info_code	float64	2	1	2048440
+info_msg	object	2	1	2048440
+filename	float64	0	0	2048442
+tags	object	2048442	2	0
+username	object	7146	120	2041296
+password	float64	0	0	2048442
+proxied	object	1154	183	2047288
+orig_fuids	object	133222	133222	1915220
+orig_mime_types	object	133222	18	1915220
+resp_fuids	object	705213	701396	1343229
+resp_mime_types	object	705213	29	1343229
