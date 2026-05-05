@@ -40,7 +40,7 @@ impl Ui {
             native_options,
             Box::new(|cc| Ok(Box::new(AppCreator::new(cc, config)))),
         )
-        .map_err(GraphicsBackendError::FailedRunNative)
+        .map_err(|error| GraphicsBackendError::FailedRunNative(error.to_string()))
         .map_err(ProjectError::GraphicsBackend)
     }
 
@@ -59,7 +59,7 @@ pub enum GraphicsBackendError {
     AppIcon,
 
     #[error("Failed to run native app. {0}")]
-    FailedRunNative(#[from] eframe::Error),
+    FailedRunNative(String),
 }
 
 pub mod creator;

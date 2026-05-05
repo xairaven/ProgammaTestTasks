@@ -27,6 +27,7 @@ fn main() {
 }
 
 mod backend;
+mod commands;
 mod config;
 mod context;
 mod errors;
