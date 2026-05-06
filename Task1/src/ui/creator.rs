@@ -50,7 +50,11 @@ impl eframe::App for AppCreator {
         if let Ok(event) = self.context.engine_event_rx.try_recv() {
             match event {
                 EngineEvent::PassInfo(info) => {
-                    self.workspace.output.add_to_buffer(info);
+                    self.workspace.output.add_info(info);
+                },
+                EngineEvent::PassProgress(message) => {
+                    self.workspace.output.add_progress(message);
+                    ui.request_repaint();
                 },
             }
         }

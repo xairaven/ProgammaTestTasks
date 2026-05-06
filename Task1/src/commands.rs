@@ -9,4 +9,5 @@ pub enum UiCommand {
 #[derive(Debug)]
 pub enum EngineEvent {
     PassInfo(InfectedHostInfo),
+    PassProgress(String),
 }

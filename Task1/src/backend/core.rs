@@ -59,11 +59,14 @@ impl Engine {
             .input_path(path)
             .spawn()
             .map_err(BackendError::TSharkInitialize)?;
+        self.send_progress("Started analysis.");
 
         // Using Hashmap for avoiding duplicates. Key -- Victim IP
         let mut infected_hosts: HashMap<String, InfectedHostInfo> = HashMap::new();
 
+        let mut packet_index = 1;
         while let Some(packet) = rtshark.read().map_err(BackendError::PacketRead)? {
+            self.send_progress(&format!("Analyzing packet #{}", packet_index));
             // First stage: checking, if this exact packet gives info about infected machine
             if let Some(device) = Self::is_talking_to_attacker(&attacker_ip, &packet) {
                 infected_hosts.entry(device.ip.clone()).or_insert_with(|| {
@@ -120,6 +123,8 @@ impl Engine {
                     }
                 }
             }
+
+            packet_index += 1;
         }
 
         let full_infos: Vec<InfectedHostInfo> = infected_hosts.into_values().collect();
@@ -216,5 +221,11 @@ impl Engine {
         }
 
         None
+    }
+
+    fn send_progress(&self, message: &str) {
+        let _ = self
+            .engine_event_tx
+            .send(EngineEvent::PassProgress(message.to_string()));
     }
 }

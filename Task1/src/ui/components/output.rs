@@ -1,6 +1,6 @@
 use crate::backend::info::InfectedHostInfo;
 use crate::context::Context;
-use egui::{CentralPanel, Panel};
+use egui::{CentralPanel, Panel, ScrollArea};
 
 #[derive(Debug, Default)]
 pub struct OutputComponent {
@@ -20,13 +20,23 @@ impl OutputComponent {
             });
 
         CentralPanel::default().show_inside(ui, |ui| {
-            ui.label(&self.buffer);
+            ScrollArea::vertical()
+                .auto_shrink([false; 2])
+                .stick_to_bottom(true)
+                .show(ui, |ui| {
+                    ui.label(&self.buffer);
+                });
         });
     }
 
-    pub fn add_to_buffer(&mut self, info: InfectedHostInfo) {
+    pub fn add_info(&mut self, info: InfectedHostInfo) {
         let text = info.to_string();
         self.buffer.push_str(&text);
         self.buffer.push('\n')
+    }
+
+    pub fn add_progress(&mut self, progress: String) {
+        self.buffer.push_str(&progress);
+        self.buffer.push('\n');
     }
 }
