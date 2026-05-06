@@ -54,10 +54,11 @@ impl eframe::App for AppCreator {
                 },
                 EngineEvent::PassProgress(message) => {
                     self.workspace.output.add_progress(message);
-                    ui.request_repaint();
                 },
             }
         }
+
+        ui.request_repaint();
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

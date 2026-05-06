@@ -5,6 +5,8 @@ use crate::errors::ProjectError;
 use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use rtshark::{Layer, Packet, RTSharkBuilder};
 use std::collections::HashMap;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Engine {
@@ -13,6 +15,8 @@ pub struct Engine {
     pub engine_event_tx: Sender<EngineEvent>,
     pub errors_tx: Sender<ProjectError>,
 }
+
+const UPDATE_LOGS_EVERY_X_PACKAGES: u16 = 100;
 
 const ETHERNET_LAYER_IDENTIFIER: &str = "eth";
 
@@ -27,7 +31,10 @@ impl Engine {
             let command = match self.ui_command_rx.try_recv() {
                 Ok(value) => value,
                 Err(TryRecvError::Disconnected) => return,
-                Err(TryRecvError::Empty) => continue,
+                Err(TryRecvError::Empty) => {
+                    thread::sleep(Duration::from_millis(500));
+                    continue;
+                },
             };
 
             let result = match command {
@@ -66,7 +73,10 @@ impl Engine {
 
         let mut packet_index = 1;
         while let Some(packet) = rtshark.read().map_err(BackendError::PacketRead)? {
-            self.send_progress(&format!("Analyzing packet #{}", packet_index));
+            if packet_index % UPDATE_LOGS_EVERY_X_PACKAGES == 0 {
+                self.send_progress(&format!("Analyzing packet #{}", packet_index));
+            }
+
             // First stage: checking, if this exact packet gives info about infected machine
             if let Some(device) = Self::is_talking_to_attacker(&attacker_ip, &packet) {
                 infected_hosts.entry(device.ip.clone()).or_insert_with(|| {
