@@ -1,4 +1,5 @@
 use crate::backend::info::InitialInformation;
+use crate::commands::UiCommand;
 use crate::context::Context;
 use crate::errors::ProjectError;
 use crate::ui::errors::FrontendError;
@@ -89,7 +90,7 @@ impl SettingsComponent {
         let initial_info = InitialInformation::new(self.attacker_ip.clone(), path);
         match initial_info {
             Ok(info) => {
-                todo!()
+                let _ = context.ui_command_tx.try_send(UiCommand::Start(info));
             },
             Err(error) => {
                 let _ = context.errors_tx.try_send(ProjectError::Frontend(error));

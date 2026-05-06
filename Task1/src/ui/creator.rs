@@ -1,3 +1,4 @@
+use crate::commands::{EngineEvent, UiCommand};
 use crate::config::Config;
 use crate::context::Context;
 use crate::ui::modals::ModalsHandler;
@@ -45,5 +46,17 @@ impl eframe::App for AppCreator {
 
             self.modals_handler.handle_errors(ui, &self.context);
         });
+
+        if let Ok(event) = self.context.engine_event_rx.try_recv() {
+            match event {
+                EngineEvent::PassInfo(info) => {
+                    self.workspace.output.add_to_buffer(info);
+                },
+            }
+        }
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        let _ = self.context.ui_command_tx.try_send(UiCommand::Exit);
     }
 }

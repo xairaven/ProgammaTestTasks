@@ -1,3 +1,4 @@
+use crate::backend::info::InfectedHostInfo;
 use crate::context::Context;
 use egui::{CentralPanel, Panel};
 
@@ -7,9 +8,7 @@ pub struct OutputComponent {
 }
 
 impl OutputComponent {
-    pub fn show(&mut self, ui: &mut egui::Ui, context: &mut Context) {
-        self.update_buffer(context);
-
+    pub fn show(&mut self, ui: &mut egui::Ui, _context: &mut Context) {
         Panel::bottom("CLEAR_OUTPUT")
             .show_separator_line(false)
             .show_inside(ui, |ui| {
@@ -25,10 +24,9 @@ impl OutputComponent {
         });
     }
 
-    fn update_buffer(&mut self, context: &mut Context) {
-        while let Ok(message) = context.output_rx.try_recv() {
-            self.buffer.push_str(&message);
-            self.buffer.push('\n');
-        }
+    pub fn add_to_buffer(&mut self, info: InfectedHostInfo) {
+        let text = info.to_string();
+        self.buffer.push_str(&text);
+        self.buffer.push('\n')
     }
 }

@@ -1,4 +1,4 @@
-use crate::backend::info::InitialInformation;
+use crate::backend::info::{InfectedHostInfo, InitialInformation};
 
 #[derive(Debug)]
 pub enum UiCommand {
@@ -7,4 +7,6 @@ pub enum UiCommand {
 }
 
 #[derive(Debug)]
-pub enum EngineEvent {}
+pub enum EngineEvent {
+    PassInfo(InfectedHostInfo),
+}

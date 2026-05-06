@@ -7,9 +7,6 @@ use crossbeam::channel::{Receiver, Sender};
 #[derive(Debug)]
 pub struct Context {
     // Channels
-    pub output_tx: Sender<String>,
-    pub output_rx: Receiver<String>,
-
     pub ui_command_tx: Sender<UiCommand>,
     pub ui_command_rx: Receiver<UiCommand>,
 
@@ -23,7 +20,6 @@ pub struct Context {
 impl Context {
     pub fn new(_config: Config) -> Self {
         let (errors_tx, errors_rx) = crossbeam::channel::unbounded();
-        let (output_tx, output_rx) = crossbeam::channel::unbounded();
         let (engine_event_tx, engine_event_rx) = crossbeam::channel::unbounded();
         let (ui_command_tx, ui_command_rx) = crossbeam::channel::unbounded();
 
@@ -40,9 +36,6 @@ impl Context {
         Self {
             errors_tx,
             errors_rx,
-
-            output_tx,
-            output_rx,
 
             ui_command_tx,
             ui_command_rx,
