@@ -10,14 +10,12 @@ fn main() {
         std::process::exit(1);
     });
 
-    let _entries = parser::Parser::default()
+    let entries = parser::Parser::default()
         .parse(args)
         .unwrap_or_else(|error| {
-            log::error!("Error: {}", error);
+            eprintln!("Error: {}", error);
             std::process::exit(1);
         });
-
-    dbg!(_entries);
 }
 
 mod cli;

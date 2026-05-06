@@ -88,9 +88,6 @@ pub enum ParserError {
     #[error("Failed to parse transaction depth on line {0}. {1}")]
     TransactionDepth(usize, std::num::ParseIntError),
 
-    #[error("Failed to parse host (header) IP on line {0}. {1}")]
-    HostHeader(usize, std::net::AddrParseError),
-
     #[error("Failed to parse request body length on line {0}. {1}")]
     RequestBodyLength(usize, std::num::ParseIntError),
 
@@ -102,10 +99,4 @@ pub enum ParserError {
 
     #[error("Failed to parse info code on line {0}. {1}")]
     InfoCode(usize, std::num::ParseIntError),
-
-    #[error("Failed to parse file name on line {0}. {1}")]
-    FileName(usize, std::num::ParseIntError),
-
-    #[error("Failed to parse password on line {0}. {1}")]
-    Password(usize, std::num::ParseIntError),
 }
