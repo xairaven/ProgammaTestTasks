@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["Task1"]
+members = ["Task1", "Task2"]
 
 [profile.release]
 lto = true
