@@ -62,21 +62,26 @@ impl Engine {
         let path = info.file.to_str().ok_or(BackendError::InvalidPath)?;
         let attacker_ip = info.attacker_ip.to_string();
 
-        let mut rtshark = RTSharkBuilder::builder()
-            .input_path(path)
-            .spawn()
-            .map_err(BackendError::TSharkInitialize)?;
-        self.send_progress("Started analysis.");
+        let tshark_filter = format!(
+            "ip.addr == {} or ldap or cldap or nbns or llmnr or kerberos or samr or dcerpc or smb2",
+            attacker_ip
+        );
 
         // Using Hashmap for avoiding duplicates. Key -- Victim IP
         let mut infected_hosts: HashMap<String, InfectedHostInfo> = HashMap::new();
 
+        // FIRST PASS
+        let mut rtshark = RTSharkBuilder::builder()
+            .input_path(path)
+            .display_filter(&tshark_filter)
+            .spawn()
+            .map_err(BackendError::TSharkInitialize)?;
+        self.send_progress("Started analysis. First pass");
         let mut packet_index = 1;
         while let Some(packet) = rtshark.read().map_err(BackendError::PacketRead)? {
             if packet_index % UPDATE_LOGS_EVERY_X_PACKAGES == 0 {
-                self.send_progress(&format!("Analyzing packet #{}", packet_index));
+                self.send_progress(&format!("(1) Analyzing packet #{}", packet_index));
             }
-
             // First stage: checking, if this exact packet gives info about infected machine
             if let Some(device) = Self::is_talking_to_attacker(&attacker_ip, &packet) {
                 infected_hosts.entry(device.ip.clone()).or_insert_with(|| {
@@ -88,6 +93,21 @@ impl Engine {
                         display_name: None,
                     }
                 });
+            }
+            packet_index += 1;
+        }
+
+        // SECOND PASS
+        let mut rtshark = RTSharkBuilder::builder()
+            .input_path(path)
+            .display_filter(&tshark_filter)
+            .spawn()
+            .map_err(BackendError::TSharkInitialize)?;
+        self.send_progress("\nStarted analysis. Second pass");
+        let mut packet_index = 1;
+        while let Some(packet) = rtshark.read().map_err(BackendError::PacketRead)? {
+            if packet_index % UPDATE_LOGS_EVERY_X_PACKAGES == 0 {
+                self.send_progress(&format!("(2) Analyzing packet #{}", packet_index));
             }
 
             // Stage 2: Is packet involves victims?
@@ -176,33 +196,65 @@ impl Engine {
     }
 
     fn hostname(layer: &Layer) -> Option<String> {
-        const NETLOGON: &str = "netlogon";
-        const NETLOGON_COMPUTER_NAME: &str = "netlogon.computer_name";
         const NBNS: &str = "nbns";
         const NBNS_NAME: &str = "nbns.name";
+        const LDAP: &str = "ldap";
+        const LLMNR: &str = "llmnr";
+        const LLMNR_NAME: &str = "dns.qry.name";
 
-        if layer.name() == NETLOGON
-            && let Some(host) = layer.metadata(NETLOGON_COMPUTER_NAME)
-        {
-            Some(host.value().to_string())
-        } else if layer.name() == NBNS
+        if layer.name() == NBNS
             && let Some(nbns_name) = layer.metadata(NBNS_NAME)
         {
-            let name = nbns_name.value().to_string();
-            if name.contains("DESKTOP") {
-                // Cleaning from suffices like <00>>
-                let clean_name = name.split('<').next().unwrap_or(&name).trim();
+            let name = nbns_name.display().unwrap_or_else(|| nbns_name.value());
+
+            // Clean XML entities (&lt;) and NetBIOS suffixes (<00>)
+            let clean_name = name
+                .split('<')
+                .next()
+                .unwrap_or(name)
+                .split("&lt;")
+                .next()
+                .unwrap_or(name)
+                .trim();
+
+            // Filter out empty strings and standard system group names
+            if !clean_name.is_empty()
+                && clean_name != "WORKGROUP"
+                && clean_name != "LOCAL"
+                && !clean_name.starts_with("__MSBROWSE__")
+            {
                 return Some(clean_name.to_string());
             }
-            None
-        } else {
-            None
         }
+
+        if layer.name() == LDAP {
+            for meta in layer.iter() {
+                let val = meta.value();
+                if val.contains("(Host=")
+                    && let Some(start) = val.find("Host=")
+                {
+                    let start_idx = start + 5;
+                    if let Some(end) = val[start_idx..].find(')') {
+                        return Some(val[start_idx..start_idx + end].to_string());
+                    }
+                }
+            }
+        }
+
+        if layer.name() == LLMNR {
+            for meta in layer.iter() {
+                if meta.name() == LLMNR_NAME {
+                    return Some(meta.value().to_string());
+                }
+            }
+        }
+
+        None
     }
 
     fn account_name(layer: &Layer) -> Option<String> {
         const KERBEROS: &str = "kerberos";
-        const KERBEROS_NAME_METADATA: &str = "kerberos.name_string";
+        const KERBEROS_NAME_METADATA: &str = "kerberos.CNameString";
 
         if layer.name() == KERBEROS
             && let Some(cname) = layer.metadata(KERBEROS_NAME_METADATA)
@@ -219,14 +271,19 @@ impl Engine {
 
     fn display_name(layer: &Layer) -> Option<String> {
         const SAMR: &str = "samr";
-        const SAMR_NAME_METADATA: &str = "samr.full_name";
+        const SAMR_NAME_METADATA: &str = "samr.samr_UserInfo21.full_name";
 
-        if layer.name() == SAMR
-            && let Some(full_name) = layer.metadata(SAMR_NAME_METADATA)
-        {
-            let name = full_name.value().to_string();
-            if !name.is_empty() {
-                return Some(name);
+        if layer.name() == SAMR {
+            for meta in layer.iter() {
+                if meta.name() == SAMR_NAME_METADATA {
+                    let mut name = meta.value().to_string();
+                    if name.is_empty() {
+                        name = meta.display().unwrap_or("").to_string();
+                    }
+                    if !name.is_empty() {
+                        return Some(name);
+                    }
+                }
             }
         }
 

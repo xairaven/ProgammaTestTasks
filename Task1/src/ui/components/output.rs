@@ -31,8 +31,12 @@ impl OutputComponent {
 
     pub fn add_info(&mut self, info: InfectedHostInfo) {
         let text = info.to_string();
+
+        self.buffer.push('\n');
+        self.buffer.push_str("RESULTS\n");
+        self.buffer.push_str("----------\n");
         self.buffer.push_str(&text);
-        self.buffer.push('\n')
+        self.buffer.push('\n');
     }
 
     pub fn add_progress(&mut self, progress: String) {
