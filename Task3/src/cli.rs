@@ -15,4 +15,7 @@ pub struct InputArgs {
         help = "Set the logging level (off, error, warn, info, debug, trace)"
     )]
     pub log_level: LevelFilter,
+
+    #[arg(long, help = "Generate a Data Schema report (Unique/Missing values)")]
+    pub schema_report: bool,
 }

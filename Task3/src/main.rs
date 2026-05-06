@@ -12,13 +12,18 @@ fn main() {
     });
 
     let entries = parser::Parser::default()
-        .parse(args)
+        .parse(&args)
         .unwrap_or_else(|error| {
             eprintln!("Error: {}", error);
             std::process::exit(1);
         });
 
     println!("Parsing finished. Analyzing {} records...", entries.len());
+
+    if args.schema_report {
+        Analyzer::print_schema_report(&entries);
+        return;
+    }
 
     let report = Analyzer::analyze(&entries);
 

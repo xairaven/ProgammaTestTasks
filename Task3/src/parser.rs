@@ -11,7 +11,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn parse(&self, args: InputArgs) -> Result<Vec<JournalEntry>, Error> {
+    pub fn parse(&self, args: &InputArgs) -> Result<Vec<JournalEntry>, Error> {
         let file = File::open(&args.file).map_err(ParserError::FileOpen)?;
         log::info!("File opened.");
 
