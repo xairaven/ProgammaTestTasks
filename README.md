@@ -17,6 +17,9 @@ from PCAP files, alongside a detailed incident report.
 The program identifies signs of NetSupport Manager activity, 
 extracting the victim's IP and MAC addresses, hostname, sAMAccountName, and display name.
 
+- **Manual Search Report**: [*Markdown file*](./docs/Task1/ManualSearch.md)
+- **Automated Search Report**: [*Markdown file*](./docs/Task1/Automated.md)
+
 *Task2* contains the implementation of a bitwise XOR function for input data in binary, 
 octal, or hexadecimal numeral systems. The utility correctly processes the buffers of 
 equal length and returns the result in the original format.
