@@ -10,7 +10,7 @@ pub struct JournalEntry {
     pub ip_destination: IpAddr,
     pub port_destination: u16,
     pub transaction_depth: u16,
-    pub method: String, // TODO: Enum Structure
+    pub method: Option<HTTPMethod>,
     pub host_header: String,
     pub uri: String,
     pub referrer: Option<String>,
@@ -75,7 +75,10 @@ impl TryFrom<(usize, &Vec<&str>)> for JournalEntry {
             transaction_depth: arguments[6]
                 .parse::<u16>()
                 .map_err(|error| Self::Error::TransactionDepth(index, error))?,
-            method: arguments[7].to_string(),
+            method: match arguments[7] {
+                MINUS | EMPTY => None,
+                v => Some(HTTPMethod::from(v)),
+            },
             host_header: arguments[8].to_string(),
             uri: arguments[9].to_string(),
             referrer: match arguments[10] {
@@ -150,5 +153,56 @@ impl TryFrom<(usize, &Vec<&str>)> for JournalEntry {
         };
 
         Ok(entry)
+    }
+}
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub enum HTTPMethod {
+    Get,
+    Post,
+    Put,
+    Delete,
+    Head,
+    Options,
+    Connect,
+    Trace,
+    Patch,
+    Other(String),
+}
+
+impl From<&str> for HTTPMethod {
+    fn from(method: &str) -> Self {
+        let method = method.trim().to_lowercase();
+        match method.as_str() {
+            "get" => Self::Get,
+            "post" => Self::Post,
+            "put" => Self::Put,
+            "delete" => Self::Delete,
+            "head" => Self::Head,
+            "options" => Self::Options,
+            "connect" => Self::Connect,
+            "trace" => Self::Trace,
+            "patch" => Self::Patch,
+            &_ => Self::Other(method),
+        }
+    }
+}
+
+impl std::fmt::Display for HTTPMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let result = match self {
+            Self::Get => "GET",
+            Self::Post => "POST",
+            Self::Put => "PUT",
+            Self::Delete => "DELETE",
+            Self::Head => "HEAD",
+            Self::Options => "OPTIONS",
+            Self::Connect => "CONNECT",
+            Self::Trace => "TRACE",
+            Self::Patch => "PATCH",
+            Self::Other(method) => method.as_str(),
+        };
+
+        write!(f, "{}", result)
     }
 }
