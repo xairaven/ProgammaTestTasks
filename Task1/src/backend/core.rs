@@ -215,7 +215,8 @@ impl Engine {
                 .split("&lt;")
                 .next()
                 .unwrap_or(name)
-                .trim();
+                .trim()
+                .replace("Name: ", "");
 
             // Filter out empty strings and standard system group names
             if !clean_name.is_empty()
