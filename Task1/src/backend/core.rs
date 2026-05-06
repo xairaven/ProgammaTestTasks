@@ -4,6 +4,7 @@ use crate::commands::{EngineEvent, UiCommand};
 use crate::errors::ProjectError;
 use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use rtshark::{Layer, Packet, RTSharkBuilder};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Engine {
@@ -59,77 +60,69 @@ impl Engine {
             .spawn()
             .map_err(BackendError::TSharkInitialize)?;
 
-        let mut full_infos = vec![];
-        let mut infected_devices = vec![];
+        // Using Hashmap for avoiding duplicates. Key -- Victim IP
+        let mut infected_hosts: HashMap<String, InfectedHostInfo> = HashMap::new();
 
-        loop {
-            let packet = rtshark.read().map_err(BackendError::PacketRead)?;
-
-            let packet = match packet {
-                Some(packet) => packet,
-                None => break,
-            };
-
+        while let Some(packet) = rtshark.read().map_err(BackendError::PacketRead)? {
             // First stage: checking, if this exact packet gives info about infected machine
             if let Some(device) = Self::is_talking_to_attacker(&attacker_ip, &packet) {
-                infected_devices.push(device);
+                infected_hosts.entry(device.ip.clone()).or_insert_with(|| {
+                    InfectedHostInfo {
+                        ip: Some(device.ip.clone()),
+                        mac: device.mac.clone(),
+                        hostname: None,
+                        sam_account_name: None,
+                        display_name: None,
+                    }
+                });
             }
 
-            // Anyway, maybe that's the packet that involves other infected machines. So:
-            // Stage 2: Are there involved infected machines?
-            let involved_infected_machines = infected_devices
-                .iter()
-                .filter(|device| Self::is_packet_involves_victim(device, &packet))
-                .cloned()
-                .collect::<Vec<_>>();
-
-            if involved_infected_machines.is_empty() {
-                continue;
-            }
-
-            let mut full_info_involved = involved_infected_machines
-                .into_iter()
-                .map(|device| InfectedHostInfo {
-                    ip: Some(device.ip),
-                    mac: device.mac,
-                    hostname: None,
-                    sam_account_name: None,
-                    display_name: None,
-                })
-                .collect::<Vec<_>>();
-
-            // Stage 3: If yes, searching for names
-            for layer in packet {
-                // Firstly, trying to get Hostname from NetLogon or NBNS
-                if let Some(hostname) = Self::hostname(&layer) {
-                    for info in &mut full_info_involved {
-                        if info.hostname.is_none() {
-                            info.hostname = Some(hostname.clone());
-                        }
+            // Stage 2: Is packet involves victims?
+            let mut involved_victim_ip = None;
+            for layer in packet.clone() {
+                if layer.name() == IP_LAYER_IDENTIFIER {
+                    if let Some(src) = layer.metadata(IP_SOURCE_METADATA)
+                        && infected_hosts.contains_key(src.value())
+                    {
+                        involved_victim_ip = Some(src.value().to_string());
+                        break;
                     }
-                }
-
-                // Secondly -- trying to get sAMAccountName (from Kerberos AS-REQ)
-                if let Some(account_name) = Self::account_name(&layer) {
-                    for info in &mut full_info_involved {
-                        if info.sam_account_name.is_none() {
-                            info.sam_account_name = Some(account_name.clone());
-                        }
-                    }
-                }
-
-                // Finally -- getting Display Name from SAMR
-                if let Some(display_name) = Self::display_name(&layer) {
-                    for info in &mut full_info_involved {
-                        if info.display_name.is_none() {
-                            info.display_name = Some(display_name.clone());
-                        }
+                    if let Some(dst) = layer.metadata(IP_DESTINATION_METADATA)
+                        && infected_hosts.contains_key(dst.value())
+                    {
+                        involved_victim_ip = Some(dst.value().to_string());
+                        break;
                     }
                 }
             }
 
-            full_infos.extend(full_info_involved);
+            // Stage 3: If packet is "owned" by some victim, searching for name and updating profile
+            if let Some(victim_ip) = involved_victim_ip
+                && let Some(host_info) = infected_hosts.get_mut(&victim_ip)
+            {
+                for layer in packet {
+                    if host_info.hostname.is_none()
+                        && let Some(hostname) = Self::hostname(&layer)
+                    {
+                        host_info.hostname = Some(hostname);
+                    }
+
+                    if host_info.sam_account_name.is_none()
+                        && let Some(account_name) = Self::account_name(&layer)
+                    {
+                        host_info.sam_account_name = Some(account_name);
+                    }
+
+                    if host_info.display_name.is_none()
+                        && let Some(display_name) = Self::display_name(&layer)
+                    {
+                        host_info.display_name = Some(display_name);
+                    }
+                }
+            }
         }
+
+        let full_infos: Vec<InfectedHostInfo> = infected_hosts.into_values().collect();
 
         Ok(full_infos)
     }
@@ -165,28 +158,6 @@ impl Engine {
         }
 
         result
-    }
-
-    fn is_packet_involves_victim(device: &NetworkDevice, packet: &Packet) -> bool {
-        let packet = packet.clone();
-
-        for layer in packet {
-            if layer.name() == IP_LAYER_IDENTIFIER {
-                if let Some(src) = layer.metadata(IP_SOURCE_METADATA)
-                    && src.value() == device.ip
-                {
-                    return true;
-                }
-
-                if let Some(dst) = layer.metadata(IP_DESTINATION_METADATA)
-                    && dst.value() == device.ip
-                {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
 
     fn hostname(layer: &Layer) -> Option<String> {
